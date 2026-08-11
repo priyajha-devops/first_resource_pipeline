@@ -7,6 +7,10 @@ var_rgs = {
         name="rg_universe"
         location="westus"
     }
+     r3={
+        name="rg_sun"
+        location="westus"
+    }
 }
 var_stg = {
     s1={
