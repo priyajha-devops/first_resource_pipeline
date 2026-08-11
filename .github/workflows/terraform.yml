@@ -1,0 +1,61 @@
+name: 'Terraform CI/CD Pipeline'
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  terraform:
+    name: 'Terraform Workflow'
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: ./environment/dev
+
+    steps:
+    # 1. Repository Code Checkout
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    # 2. Azure Login
+    - name: Azure Login
+      uses: azure/login@v2
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    # 3. Setup Terraform
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 5.0.0
+
+    # 4. Terraform Init (Feature PR & Main dono par chalega)
+    - name: Terraform Init
+      run: terraform init
+
+    # 5. Terraform Format Check (Feature PR & Main dono par chalega)
+    - name: Terraform Format
+      run: terraform fmt -check
+
+    # 6. Terraform Validate (Feature PR & Main dono par chalega)
+    - name: Terraform Validate
+      run: terraform validate
+
+    # 7. Terraform Plan (Feature PR & Main dono par chalega)
+    - name: Terraform Plan
+      run: terraform plan -no-color -input=false
+
+    # 8. Terraform Apply (SIRF tab chalega jab PR approve hokar 'main' branch me merge ho jaye)
+    - name: Terraform Apply
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      run: terraform apply -auto-approve -input=false
