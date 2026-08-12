@@ -1,12 +1,16 @@
 var_rgs = {
-    r1={
-        name="rg_planet"
-        location="centralindia"
-    }
-    r2={
-        name="rg_universe"
-        location="westus"
-    }
+  r1 = {
+    name     = "rg_planet"
+    location = "centralindia"
+  }
+  r2 = {
+    name     = "rg_universe"
+    location = "westus"
+  }
+  r3 = {
+    name     = "rg_sun"
+    location = "westus"
+  }
 }
 var_stg = {
   s1 = {
