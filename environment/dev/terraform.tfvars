@@ -8,7 +8,7 @@ var_rgs = {
     location = "westus"
   }
   r3 = {
-    name     = "rg_sun01"
+    name     = "rg_sun"
     location = "westus"
   }
 }
