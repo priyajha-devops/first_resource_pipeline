@@ -1,14 +1,20 @@
-name: Terraform CI/CD
+name: Terraform Dev CI/CD
 
 on:
   push:
     branches:
       - main
       - features
+    paths:
+      - 'environment/dev/**'
+      - 'modules/**'
 
   pull_request:
     branches:
       - main
+    paths:
+      - 'environment/dev/**'
+      - 'modules/**'
 
 permissions:
   id-token: write
@@ -18,8 +24,9 @@ permissions:
 jobs:
 
   terraform:
-    name: Terraform
+    name: Terraform Dev
     runs-on: ubuntu-latest
+    environment: dev
 
     defaults:
       run:
