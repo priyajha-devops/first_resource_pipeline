@@ -29,4 +29,11 @@ var_stg = {
     account_replication_type = "LRS"
     account_tier             = "Standard"
   }
+  s3 = {
+    name                     = "storagean9876"
+    location                 = "westus"
+    resource_group_name      = "rg_sun"
+    account_replication_type = "LRS"
+    account_tier             = "Standard"
+  }
 }
