@@ -11,10 +11,7 @@ var_rgs = {
     name     = "rg_sun"
     location = "westus"
   }
-  r4 = {
-    name     = "rg_earth"
-    location = "centralindia"
-  }
+  
 
 }
 var_stg = {
