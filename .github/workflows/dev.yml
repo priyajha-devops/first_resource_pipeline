@@ -1,31 +1,29 @@
-name: Terraform Dev CI/CD
+name: Terraform CI/CD
 
 on:
   push:
     branches:
       - main
-    paths:
-      - 'environment/dev/**'
-      - 'modules/**'
-
+      - features
   pull_request:
     branches:
       - main
-    paths:
-      - 'environment/dev/**'
-      - 'modules/**'
 
 permissions:
   id-token: write
-  contents: read
+  contents: write
   pull-requests: write
 
 jobs:
 
-  terraform:
-    name: Terraform Dev
+  # ------------------------------------------------------------------
+  # JOB 1: Runs on "features/**" branch push -> fmt, init, validate, plan
+  # Then automatically opens a Pull Request into "main"
+  # ------------------------------------------------------------------
+  plan:
+    name: Terraform Plan (features branch)
+    if: github.ref == 'refs/heads/features' && github.event_name == 'push'
     runs-on: ubuntu-latest
-    environment: dev
 
     defaults:
       run:
@@ -58,6 +56,88 @@ jobs:
       - name: Terraform Plan
         run: terraform plan -out=tfplan
 
+      - name: Create Pull Request to main
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: main
+          branch: ${{ github.ref_name }}
+          title: "Terraform changes from ${{ github.ref_name }}"
+          body: |
+            Automated PR created after successful `terraform plan` on branch `${{ github.ref_name }}`.
+            Review the plan output in the Actions run before approving.
+          commit-message: "chore: terraform changes ready for review"
+
+  # ------------------------------------------------------------------
+  # JOB 2: Runs on Pull Request targeting "main" -> re-validate plan
+  # (lets reviewers see the plan output inside the PR checks)
+  # ------------------------------------------------------------------
+  plan-on-pr:
+    name: Terraform Plan (PR review)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: environment/dev
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan
+        run: terraform plan
+
+  # ------------------------------------------------------------------
+  # JOB 3: Runs only on "main" branch push (i.e. after PR is approved
+  # and merged) -> requires manual approval via GitHub Environment,
+  # then applies
+  # ------------------------------------------------------------------
+  apply:
+    name: Terraform Apply (main branch)
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: production   # <-- set "Required reviewers" on this environment in repo Settings
+
+    defaults:
+      run:
+        working-directory: environment/dev
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
+
       - name: Terraform Apply
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: terraform apply -auto-approve tfplan
