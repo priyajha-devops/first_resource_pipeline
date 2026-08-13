@@ -1,143 +1,61 @@
-name: Terraform CI/CD
+name: "Terraform Azure Dev Pipeline"
 
 on:
   push:
     branches:
       - main
-      - features
+      - 'feature*'      # Triggers on feature, feature-rg, feature/add-rg etc.
+      - 'feature/**'
   pull_request:
     branches:
       - main
 
 permissions:
-  id-token: write
-  contents: write
+  contents: read
   pull-requests: write
 
 jobs:
-
-  # ------------------------------------------------------------------
-  # JOB 1: Runs on "features/**" branch push -> fmt, init, validate, plan
-  # Then automatically opens a Pull Request into "main"
-  # ------------------------------------------------------------------
-  plan:
-    name: Terraform Plan (features branch)
-    if: github.ref == 'refs/heads/features' && github.event_name == 'push'
+  terraform:
+    name: "Terraform Workflow"
     runs-on: ubuntu-latest
+    
+    env:
+      # Azure ke secrets jo aapne GitHub Settings me dale hain
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
 
+    # Yeh line important hai kyuki aapka code environment/dev ke andar hai
     defaults:
       run:
-        working-directory: environment/dev
+        working-directory: ./environment/dev
 
     steps:
-
-      - name: Checkout
+      # Step 1: Code repository se checkout karna
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
+      # Step 2: Terraform install karna
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.0
 
-      - name: Terraform Format
+      # Step 3: Terraform Init (environment/dev ke andar chalega)
+      - name: Terraform Init
+        run: terraform init
+
+      # Step 4: Format check
+      - name: Terraform Format Check
         run: terraform fmt -check
 
-      - name: Terraform Init
-        run: terraform init
-
-      - name: Terraform Validate
-        run: terraform validate
-
+      # Step 5: Terraform Plan (Yeh feature branch push aur PR dono pe chalega)
       - name: Terraform Plan
-        run: terraform plan -out=tfplan
+        id: plan
+        run: terraform plan -no-color
 
-      - name: Create Pull Request to main
-        uses: peter-evans/create-pull-request@v6
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          base: main
-          branch: ${{ github.ref_name }}
-          title: "Terraform changes from ${{ github.ref_name }}"
-          body: |
-            Automated PR created after successful `terraform plan` on branch `${{ github.ref_name }}`.
-            Review the plan output in the Actions run before approving.
-          commit-message: "chore: terraform changes ready for review"
-
-  # ------------------------------------------------------------------
-  # JOB 2: Runs on Pull Request targeting "main" -> re-validate plan
-  # (lets reviewers see the plan output inside the PR checks)
-  # ------------------------------------------------------------------
-  plan-on-pr:
-    name: Terraform Plan (PR review)
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: environment/dev
-
-    steps:
-
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Terraform Init
-        run: terraform init
-
-      - name: Terraform Plan
-        run: terraform plan
-
-  # ------------------------------------------------------------------
-  # JOB 3: Runs only on "main" branch push (i.e. after PR is approved
-  # and merged) -> requires manual approval via GitHub Environment,
-  # then applies
-  # ------------------------------------------------------------------
-  apply:
-    name: Terraform Apply (main branch)
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    environment: production   # <-- set "Required reviewers" on this environment in repo Settings
-
-    defaults:
-      run:
-        working-directory: environment/dev
-
-    steps:
-
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Terraform Init
-        run: terraform init
-
-      - name: Terraform Plan
-        run: terraform plan -out=tfplan
-
+      # Step 6: Terraform Apply (Yeh SIRF tab chalega jab main branch me merge ya push hoga)
       - name: Terraform Apply
-        run: terraform apply -auto-approve tfplan
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: terraform apply -auto-approve
