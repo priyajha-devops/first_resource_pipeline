@@ -1,17 +1,25 @@
-name: Terraform CI/CD
+name: "Terraform Azure Dev Pipeline"
 
 on:
   push:
     branches:
       - main
+<<<<<<< Updated upstream
       - features
+=======
+      - 'feature*'      # Triggers on feature, feature-rg, feature/add-rg etc.
+      - 'feature/**'
+  pull_request:
+    branches:
+      - main
+>>>>>>> Stashed changes
 
 permissions:
-  id-token: write
-  contents: write
+  contents: read
   pull-requests: write
 
 jobs:
+<<<<<<< Updated upstream
 
   # ------------------------------------------------------------------
   # JOB 1: Runs when code is pushed to "features" branch
@@ -20,37 +28,46 @@ jobs:
   plan:
     name: Terraform Plan (features branch)
     if: github.ref == 'refs/heads/features' && github.event_name == 'push'
+=======
+  terraform:
+    name: "Terraform Workflow"
+>>>>>>> Stashed changes
     runs-on: ubuntu-latest
+    
+    env:
+      # Azure ke secrets jo aapne GitHub Settings me dale hain
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
 
+    # Yeh line important hai kyuki aapka code environment/dev ke andar hai
     defaults:
       run:
-        working-directory: environment/dev
+        working-directory: ./environment/dev
 
     steps:
-
-      - name: Checkout
+      # Step 1: Code repository se checkout karna
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
+      # Step 2: Terraform install karna
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.0
 
-      - name: Terraform Format
-        run: terraform fmt -check
-
+      # Step 3: Terraform Init (environment/dev ke andar chalega)
       - name: Terraform Init
         run: terraform init
 
-      - name: Terraform Validate
-        run: terraform validate
+      # Step 4: Format check
+      - name: Terraform Format Check
+        run: terraform fmt -check
 
+      # Step 5: Terraform Plan (Yeh feature branch push aur PR dono pe chalega)
       - name: Terraform Plan
+<<<<<<< Updated upstream
         run: terraform plan
 
       - name: Create Pull Request to main
@@ -99,6 +116,12 @@ jobs:
 
       - name: Terraform Plan
         run: terraform plan -out=tfplan
+=======
+        id: plan
+        run: terraform plan -no-color
+>>>>>>> Stashed changes
 
+      # Step 6: Terraform Apply (Yeh SIRF tab chalega jab main branch me merge ya push hoga)
       - name: Terraform Apply
-        run: terraform apply -auto-approve tfplan
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: terraform apply -auto-approve
