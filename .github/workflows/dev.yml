@@ -4,34 +4,19 @@ on:
   push:
     branches:
       - main
-<<<<<<< Updated upstream
-      - features
-=======
       - 'feature*'      # Triggers on feature, feature-rg, feature/add-rg etc.
       - 'feature/**'
   pull_request:
     branches:
       - main
->>>>>>> Stashed changes
 
 permissions:
   contents: read
   pull-requests: write
 
 jobs:
-<<<<<<< Updated upstream
-
-  # ------------------------------------------------------------------
-  # JOB 1: Runs when code is pushed to "features" branch
-  # -> fmt, init, validate, plan
-  # ------------------------------------------------------------------
-  plan:
-    name: Terraform Plan (features branch)
-    if: github.ref == 'refs/heads/features' && github.event_name == 'push'
-=======
   terraform:
     name: "Terraform Workflow"
->>>>>>> Stashed changes
     runs-on: ubuntu-latest
     
     env:
@@ -67,59 +52,8 @@ jobs:
 
       # Step 5: Terraform Plan (Yeh feature branch push aur PR dono pe chalega)
       - name: Terraform Plan
-<<<<<<< Updated upstream
-        run: terraform plan
-
-      - name: Create Pull Request to main
-        uses: peter-evans/create-pull-request@v6
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          base: main
-          branch: features
-          title: "Terraform changes from features branch"
-          body: |
-            Automated PR created after successful `terraform plan` on branch `features`.
-            Review the plan output in the Actions run before approving and merging.
-          commit-message: "chore: terraform changes ready for review"
-
-  # ------------------------------------------------------------------
-  # JOB 2: Runs when code is pushed/merged to "main" branch
-  # -> waits for manual approval (GitHub Environment), then applies
-  # ------------------------------------------------------------------
-  apply:
-    name: Terraform Apply (main branch)
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    environment: production   # <-- add "Required reviewers" to this environment in repo Settings
-
-    defaults:
-      run:
-        working-directory: environment/dev
-
-    steps:
-
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Terraform Init
-        run: terraform init
-
-      - name: Terraform Plan
-        run: terraform plan -out=tfplan
-=======
         id: plan
         run: terraform plan -no-color
->>>>>>> Stashed changes
 
       # Step 6: Terraform Apply (Yeh SIRF tab chalega jab main branch me merge ya push hoga)
       - name: Terraform Apply
