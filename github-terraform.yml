@@ -1,0 +1,109 @@
+# ==========================================================================
+# Azure DevOps Pipeline - Terraform CI/CD
+# Plan runs on "features" branch, Apply runs on "main" branch (after
+# manual approval configured via the "production" Environment)
+# ==========================================================================
+
+trigger:
+  branches:
+    include:
+      - main
+      - features
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  workingDirectory: 'environment/dev'
+  # This must match the name of the Service Connection you create in
+  # Project Settings -> Service connections
+  azureServiceConnection: 'github-terraform'
+
+stages:
+
+# --------------------------------------------------------------------------
+# STAGE 1: Runs only when "features" branch is updated
+# fmt -> init -> validate -> plan
+# --------------------------------------------------------------------------
+- stage: Plan
+  displayName: 'Terraform Plan (features branch)'
+  condition: eq(variables['Build.SourceBranch'], 'refs/heads/features')
+  jobs:
+    - job: TerraformPlan
+      displayName: 'Terraform Plan'
+      steps:
+
+        - task: TerraformInstaller@1
+          displayName: 'Install Terraform'
+          inputs:
+            terraformVersion: 'latest'
+
+        - script: terraform fmt -check
+          displayName: 'Terraform Format Check'
+          workingDirectory: $(workingDirectory)
+
+        - task: TerraformTaskV4@4
+          displayName: 'Terraform Init'
+          inputs:
+            provider: 'azurerm'
+            command: 'init'
+            workingDirectory: $(workingDirectory)
+            backendServiceArm: $(azureServiceConnection)
+
+        - script: terraform validate
+          displayName: 'Terraform Validate'
+          workingDirectory: $(workingDirectory)
+
+        - task: TerraformTaskV4@4
+          displayName: 'Terraform Plan'
+          inputs:
+            provider: 'azurerm'
+            command: 'plan'
+            workingDirectory: $(workingDirectory)
+            environmentServiceNameAzureRM: $(azureServiceConnection)
+
+# --------------------------------------------------------------------------
+# STAGE 2: Runs only when "main" branch is updated (i.e. after PR merge)
+# Waits for manual approval via the "production" Environment, then applies
+# --------------------------------------------------------------------------
+- stage: Apply
+  displayName: 'Terraform Apply (main branch)'
+  condition: eq(variables['Build.SourceBranch'], 'refs/heads/main')
+  jobs:
+    - deployment: TerraformApply
+      displayName: 'Terraform Apply'
+      environment: 'production'   # <-- create this Environment in Azure DevOps
+                                    #     and add "Approvals" check on it
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+
+              - task: TerraformInstaller@1
+                displayName: 'Install Terraform'
+                inputs:
+                  terraformVersion: 'latest'
+
+              - task: TerraformTaskV4@4
+                displayName: 'Terraform Init'
+                inputs:
+                  provider: 'azurerm'
+                  command: 'init'
+                  workingDirectory: $(workingDirectory)
+                  backendServiceArm: $(azureServiceConnection)
+
+              - task: TerraformTaskV4@4
+                displayName: 'Terraform Plan'
+                inputs:
+                  provider: 'azurerm'
+                  command: 'plan'
+                  workingDirectory: $(workingDirectory)
+                  environmentServiceNameAzureRM: $(azureServiceConnection)
+
+              - task: TerraformTaskV4@4
+                displayName: 'Terraform Apply'
+                inputs:
+                  provider: 'azurerm'
+                  command: 'apply'
+                  workingDirectory: $(workingDirectory)
+                  environmentServiceNameAzureRM: $(azureServiceConnection)
