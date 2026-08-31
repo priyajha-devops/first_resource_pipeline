@@ -1,5 +1,5 @@
 
-
+```yaml
 name: "Terraform Azure Dev Pipeline"
 
 on:
@@ -31,37 +31,67 @@ jobs:
         working-directory: ./environment/dev
 
     steps:
-      # Step 1: Code repository se checkout karna hai
+
+      # Step 1: Checkout Repository
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # Step 2: Terraform install karna (wrapper disabled)
+
+      # Step 2: Setup Terraform
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.8.0
           terraform_wrapper: false
 
-      # Step 3: Terraform Init
+
+      # Step 3: Login to Azure
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+
+      # Step 4: Verify Azure Login
+      - name: Check Azure Account
+        run: az account show
+
+
+      # Step 5: Terraform Init
       - name: Terraform Init
         run: terraform init
 
-      # Step 4: Format check
+
+      # Step 6: Terraform Format Check
       - name: Terraform Format Check
         run: terraform fmt -check
 
-      # Step 5: Terraform Plan
+
+      # Step 7: Terraform Validate
+      - name: Terraform Validate
+        run: terraform validate
+
+
+      # Step 8: Terraform Plan
       - name: Terraform Plan
         id: plan
-        run: terraform plan -no-color -detailed-exitcode=false
+        run: terraform plan -no-color
 
-      # Step 6: Terraform Apply (Sirf main branch par chalega)
+
+      # Step 9: Terraform Apply
+      # Only main branch par chalega
       - name: Terraform Apply
         id: apply
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: terraform apply -auto-approve
 
-      # Step 7: Terraform Destroy (Agar Apply FAIL hota hai tabhi chalega)
+
+      # Step 10: Destroy if Apply Fails
+      # Sirf main branch par aur Apply fail hone par
       - name: Terraform Auto-Destroy on Failure
         if: failure() && steps.apply.outcome == 'failure' && github.ref == 'refs/heads/main'
         run: terraform destroy -auto-approve
+```
