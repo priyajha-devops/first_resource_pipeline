@@ -11,7 +11,10 @@ var_rgs = {
     name     = "rg_sun"
     location = "westus"
   }
-
+  r4 = {
+    name     = "rg_pluto"
+    location = "westus"
+  }
 
 }
 var_stg = {
